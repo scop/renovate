@@ -4,6 +4,7 @@ import * as hostRules from '../../../util/host-rules';
 import { PypiDatasource } from '.';
 import { Fixtures } from '~test/fixtures';
 import * as httpMock from '~test/http-mock';
+import { massageUrl } from '../metadata';
 
 vi.mock('google-auth-library');
 
@@ -285,6 +286,26 @@ describe('modules/datasource/pypi/index', () => {
       });
       expect(result?.sourceUrl).toBe(info.project_urls.Repository);
       expect(result?.changelogUrl).toBe(info.project_urls.changelog);
+    });
+
+    it('accepts github source urls with trailing slash', async () => {
+      const info = {
+        name: 'slash',
+        home_page: 'https://example.com',
+        project_urls: {
+          Repository: 'https://github.com/renovatebot/slash/',
+        },
+      };
+      httpMock
+        .scope(baseUrl)
+        .get('/slash/json')
+        .reply(200, { ...JSON.parse(res1), info });
+      const result = await getPkgReleases({
+        datasource,
+        packageName: 'slash',
+      });
+      // sourceUrl gets a massage, give it here too
+      expect(result?.sourceUrl).toBe(massageUrl(info.project_urls.Repository));
     });
 
     it('excludes gh sponsors url from project_urls', async () => {
